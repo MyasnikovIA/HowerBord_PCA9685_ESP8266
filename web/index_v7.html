@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR & HoverBoard Control Panel</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px 0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 15px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+        
+        .connected {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .disconnected {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .data-item {
+            background-color: var(--light-color);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .data-label {
+            font-size: 14px;
+            color: var(--dark-color);
+            margin-bottom: 5px;
+        }
+        
+        .data-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .direction-indicator {
+            font-size: 20px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        
+        .direction-left {
+            color: var(--primary-color);
+        }
+        
+        .direction-right {
+            color: var(--danger-color);
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .visualization {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .visualization h2 {
+            color: white;
+            text-align: center;
+        }
+        
+        .cube-container {
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            perspective: 1000px;
+        }
+        
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+        
+        .face {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border: 3px solid #34495e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            background: rgba(52, 152, 219, 0.8);
+        }
+        
+        .front { transform: rotateY(0deg) translateZ(150px); background: rgba(231, 76, 60, 0.8); }
+        .back { transform: rotateY(180deg) translateZ(150px); background: rgba(52, 152, 219, 0.8); }
+        .right { transform: rotateY(90deg) translateZ(150px); background: rgba(46, 204, 113, 0.8); }
+        .left { transform: rotateY(-90deg) translateZ(150px); background: rgba(155, 89, 182, 0.8); }
+        .top { transform: rotateX(90deg) translateZ(150px); background: rgba(241, 196, 15, 0.8); }
+        .bottom { transform: rotateX(-90deg) translateZ(150px); background: rgba(230, 126, 34, 0.8); }
+        
+        .joystick-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .joystick {
+            width: 200px;
+            height: 200px;
+            background-color: #ddd;
+            border-radius: 50%;
+            position: relative;
+            touch-action: none;
+        }
+        
+        .joystick-handle {
+            width: 60px;
+            height: 60px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            position: absolute;
+            top: 70px;
+            left: 70px;
+            cursor: move;
+        }
+        
+        .control-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .yaw-control {
+            background-color: #e8f5e8;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid var(--success-color);
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-container input {
+            margin-right: 10px;
+            transform: scale(1.5);
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal h3 {
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons button {
+            margin-left: 10px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 1001;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .notification.success {
+            background-color: var(--success-color);
+        }
+        
+        .notification.error {
+            background-color: var(--danger-color);
+        }
+        
+        .notification.info {
+            background-color: var(--primary-color);
+        }
+        
+        .visualizations-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .zero-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .global-zero-button {
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .gamepad-status {
+            background-color: var(--light-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .gamepad-connected {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .gamepad-disconnected {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .gamepad-info {
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            
+            .visualizations-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VR & HoverBoard Control Panel</h1>
+            <p>Управление устройствами VR и HoverBoard с синхронизацией поворота</p>
+        </header>
+        
+        <div class="status-bar">
+            <div class="status-item" id="vr-status">
+                VR Device: Disconnected
+            </div>
+            <div class="status-item" id="hover-status">
+                HoverBoard: Disconnected
+            </div>
+            <button class="btn-primary" id="settings-btn">Настройки подключения</button>
+            <button class="global-zero-button" id="global-zero-btn">Установить ноль для обоих датчиков</button>
+        </div>
+        
+        <div class="card">
+            <h2>Данные с датчиков</h2>
+            <div class="data-grid">
+                <div class="data-item">
+                    <div class="data-label">VR Pitch</div>
+                    <div class="data-value" id="vr-pitch">0°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">VR Roll</div>
+                    <div class="data-value" id="vr-roll">0°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">VR Yaw</div>
+                    <div class="data-value" id="vr-yaw">0°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Hover Pitch</div>
+                    <div class="data-value" id="hover-pitch">0°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Hover Roll</div>
+                    <div class="data-value" id="hover-roll">0°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Hover Yaw</div>
+                    <div class="data-value" id="hover-yaw">0°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Разница по Yaw</div>
+                    <div class="data-value" id="yaw-diff">0°</div>
+                    <div class="direction-indicator" id="yaw-direction"></div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Порог отклонения</div>
+                    <div class="data-value" id="threshold-value">10°</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Направление коррекции</div>
+                    <div class="data-value" id="correction-direction">-</div>
+                    <div class="direction-indicator" id="correction-arrow"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="visualizations-container">
+            <div class="visualization">
+                <h2>3D Визуализация VR устройства</h2>
+                <button class="zero-button" id="vr-zero-btn">Установить ноль</button>
+                <div class="cube-container">
+                    <div class="cube" id="vr-cube">
+                        <div class="face front">FRONT</div>
+                        <div class="face back">BACK</div>
+                        <div class="face right">RIGHT</div>
+                        <div class="face left">LEFT</div>
+                        <div class="face top">TOP</div>
+                        <div class="face bottom">BOTTOM</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visualization">
+                <h2>3D Визуализация HoverBoard</h2>
+                <button class="zero-button" id="hover-zero-btn">Установить ноль</button>
+                <div class="cube-container">
+                    <div class="cube" id="hover-cube">
+                        <div class="face front">FRONT</div>
+                        <div class="face back">BACK</div>
+                        <div class="face right">RIGHT</div>
+                        <div class="face left">LEFT</div>
+                        <div class="face top">TOP</div>
+                        <div class="face bottom">BOTTOM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-panel">
+            <div class="card">
+                <h2>Управление HoverBoard</h2>
+                <div class="controls">
+                    <button class="btn-success" id="forward-btn">↑ Вперед</button>
+                    <button class="btn-success" id="backward-btn">↓ Назад</button>
+                    <button class="btn-primary" id="left-btn">← Влево</button>
+                    <button class="btn-primary" id="right-btn">Вправо →</button>
+                    <button class="btn-danger" id="stop-btn">Стоп</button>
+                </div>
+                
+                <div class="slider-container">
+                    <label for="speed-slider">Скорость: <span id="speed-value">20</span>%</label>
+                    <input type="range" id="speed-slider" min="0" max="100" value="20">
+                </div>
+                
+                <div class="joystick-container">
+                    <div class="joystick" id="joystick">
+                        <div class="joystick-handle" id="joystick-handle"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="yaw-control card">
+                <h2>Синхронизация поворота по Yaw</h2>
+                
+                <div class="checkbox-container">
+                    <input type="checkbox" id="yaw-sync-checkbox">
+                    <label for="yaw-sync-checkbox">Включить синхронизацию поворота</label>
+                </div>
+                
+                <div class="slider-container">
+                    <label for="threshold-slider">Порог отклонения: <span id="threshold-display">10</span>°</label>
+                    <input type="range" id="threshold-slider" min="0" max="90" value="10">
+                </div>
+                
+                <p>При включенной синхронизации HoverBoard будет автоматически поворачиваться, 
+                чтобы соответствовать ориентации VR устройства, когда разница по оси Yaw превышает установленный порог.</p>
+                
+                <div class="data-item" style="margin-top: 15px;">
+                    <div class="data-label">Статус синхронизации</div>
+                    <div class="data-value" id="sync-status">Отключена</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Новый блок для управления джойстиком -->
+        <div class="card">
+            <h2>Управление джойстиком</h2>
+            <div class="gamepad-status" id="gamepad-status">
+                Джойстик: Не подключен
+            </div>
+            <div class="gamepad-info" id="gamepad-info">
+                Подключите джойстик и нажмите любую кнопку для активации
+            </div>
+            <div class="controls">
+                <button class="btn-success" id="gamepad-forward-btn">↑ Вперед</button>
+                <button class="btn-success" id="gamepad-backward-btn">↓ Назад</button>
+                <button class="btn-primary" id="gamepad-left-btn">← Влево</button>
+                <button class="btn-primary" id="gamepad-right-btn">Вправо →</button>
+                <button class="btn-danger" id="gamepad-stop-btn">Стоп</button>
+            </div>
+            <div class="slider-container">
+                <label for="gamepad-speed-slider">Скорость джойстика: <span id="gamepad-speed-value">50</span>%</label>
+                <input type="range" id="gamepad-speed-slider" min="0" max="100" value="50">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно для настройки подключения -->
+    <div class="modal" id="connection-modal">
+        <div class="modal-content">
+            <h3>Настройки подключения</h3>
+            
+            <div class="form-group">
+                <label for="vr-ip">IP адрес VR устройства (MPU6050 Sensor Data):</label>
+                <input type="text" id="vr-ip" placeholder="Например: 192.168.31.110">
+            </div>
+            
+            <div class="form-group">
+                <label for="hover-ip">IP адрес HoverBoard устройства (MPU6050 + Motor Control + Gamepad):</label>
+                <input type="text" id="hover-ip" placeholder="Например: 192.168.31.137">
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-primary" id="save-settings">Сохранить</button>
+                <button class="btn-danger" id="cancel-settings">Отмена</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Переменные для WebSocket соединений
+        let vrWebSocket = null;
+        let hoverWebSocket = null;
+        
+        // Переменные для данных с датчиков
+        let vrData = {
+            pitch: 0,
+            roll: 0,
+            yaw: 0
+        };
+        
+        let hoverData = {
+            pitch: 0,
+            roll: 0,
+            yaw: 0
+        };
+        
+        // Смещения для нулевых значений
+        let vrZeroOffset = {
+            pitch: 0,
+            roll: 0,
+            yaw: 0
+        };
+        
+        let hoverZeroOffset = {
+            pitch: 0,
+            roll: 0,
+            yaw: 0
+        };
+
+        // Переменные для управления джойстиком
+        let gamepadConnected = false;
+        let gamepadIndex = null;
+        let gamepadSpeed = 50;
+        const previousButtonStates = {};
+        const previousAxesStates = {};
+        
+        // Настройки по умолчанию
+        const defaultSettings = {
+            vrIP: '192.168.31.110', // MPU6050 Sensor Data
+            hoverIP: '192.168.31.137' // MPU6050 + Motor Control + Gamepad
+        };
+        
+        // Настройки
+        let settings = {
+            vrIP: localStorage.getItem('vrIP') || defaultSettings.vrIP,
+            hoverIP: localStorage.getItem('hoverIP') || defaultSettings.hoverIP,
+            yawSyncEnabled: false,
+            yawThreshold: 10,
+            currentSpeed: 20
+        };
+        
+        // Элементы DOM
+        const vrStatusElement = document.getElementById('vr-status');
+        const hoverStatusElement = document.getElementById('hover-status');
+        const vrPitchElement = document.getElementById('vr-pitch');
+        const vrRollElement = document.getElementById('vr-roll');
+        const vrYawElement = document.getElementById('vr-yaw');
+        const hoverPitchElement = document.getElementById('hover-pitch');
+        const hoverRollElement = document.getElementById('hover-roll');
+        const hoverYawElement = document.getElementById('hover-yaw');
+        const yawDiffElement = document.getElementById('yaw-diff');
+        const yawDirectionElement = document.getElementById('yaw-direction');
+        const thresholdValueElement = document.getElementById('threshold-value');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValueElement = document.getElementById('speed-value');
+        const yawSyncCheckbox = document.getElementById('yaw-sync-checkbox');
+        const thresholdSlider = document.getElementById('threshold-slider');
+        const thresholdDisplay = document.getElementById('threshold-display');
+        const syncStatusElement = document.getElementById('sync-status');
+        const vrCube = document.getElementById('vr-cube');
+        const hoverCube = document.getElementById('hover-cube');
+        const connectionModal = document.getElementById('connection-modal');
+        const settingsBtn = document.getElementById('settings-btn');
+        const saveSettingsBtn = document.getElementById('save-settings');
+        const cancelSettingsBtn = document.getElementById('cancel-settings');
+        const vrIPInput = document.getElementById('vr-ip');
+        const hoverIPInput = document.getElementById('hover-ip');
+        const vrZeroBtn = document.getElementById('vr-zero-btn');
+        const hoverZeroBtn = document.getElementById('hover-zero-btn');
+        const globalZeroBtn = document.getElementById('global-zero-btn');
+        const correctionDirectionElement = document.getElementById('correction-direction');
+        const correctionArrowElement = document.getElementById('correction-arrow');
+
+        // Элементы для управления джойстиком
+        const gamepadStatusElement = document.getElementById('gamepad-status');
+        const gamepadInfoElement = document.getElementById('gamepad-info');
+        const gamepadForwardBtn = document.getElementById('gamepad-forward-btn');
+        const gamepadBackwardBtn = document.getElementById('gamepad-backward-btn');
+        const gamepadLeftBtn = document.getElementById('gamepad-left-btn');
+        const gamepadRightBtn = document.getElementById('gamepad-right-btn');
+        const gamepadStopBtn = document.getElementById('gamepad-stop-btn');
+        const gamepadSpeedSlider = document.getElementById('gamepad-speed-slider');
+        const gamepadSpeedValueElement = document.getElementById('gamepad-speed-value');
+        
+        // Кнопки управления
+        const forwardBtn = document.getElementById('forward-btn');
+        const backwardBtn = document.getElementById('backward-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        
+        // Джойстик
+        const joystick = document.getElementById('joystick');
+        const joystickHandle = document.getElementById('joystick-handle');
+        let isJoystickActive = false;
+        let lastJoystickCommand = null;
+        
+        // Инициализация
+        function init() {
+            // Загрузка сохраненных настроек или установка значений по умолчанию
+            if (!localStorage.getItem('vrIP')) {
+                localStorage.setItem('vrIP', defaultSettings.vrIP);
+            }
+            if (!localStorage.getItem('hoverIP')) {
+                localStorage.setItem('hoverIP', defaultSettings.hoverIP);
+            }
+            
+            vrIPInput.value = settings.vrIP;
+            hoverIPInput.value = settings.hoverIP;
+            
+            // Установка обработчиков событий
+            settingsBtn.addEventListener('click', openSettingsModal);
+            saveSettingsBtn.addEventListener('click', saveSettings);
+            cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+            
+            speedSlider.addEventListener('input', updateSpeed);
+            yawSyncCheckbox.addEventListener('change', toggleYawSync);
+            thresholdSlider.addEventListener('input', updateThreshold);
+
+            // Обработчики для управления джойстиком
+            gamepadSpeedSlider.addEventListener('input', updateGamepadSpeed);
+
+            // ИСПРАВЛЕННЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК ДЖОЙСТИКА
+            gamepadForwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_FORWARD'));
+            gamepadForwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadForwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadBackwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_BACKWARD'));
+            gamepadBackwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadBackwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadLeftBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_LEFT'));
+            gamepadLeftBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadLeftBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadRightBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_RIGHT'));
+            gamepadRightBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadRightBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadStopBtn.addEventListener('click', () => sendHoverCommand('STOP'));
+
+            // Обработчики для кнопок управления
+            forwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_FORWARD'));
+            forwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            forwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            backwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_BACKWARD'));
+            backwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            backwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            leftBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_RIGHT'));
+            leftBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            leftBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            rightBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_LEFT'));
+            rightBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            rightBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            stopBtn.addEventListener('click', () => sendHoverCommand('STOP'));
+
+            // Обработчики для кнопок установки нуля
+            vrZeroBtn.addEventListener('click', setVRZero);
+            hoverZeroBtn.addEventListener('click', setHoverZero);
+            globalZeroBtn.addEventListener('click', setGlobalZero);
+
+            // Инициализация джойстика
+            initJoystick();
+
+            // Инициализация управления джойстиком
+            initGamepad();
+
+            // Попытка подключения к устройствам
+            connectToDevices();
+        }
+
+        // Функции для работы с модальным окном
+        function openSettingsModal() {
+            connectionModal.style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            connectionModal.style.display = 'none';
+        }
+
+        function saveSettings() {
+            settings.vrIP = vrIPInput.value;
+            settings.hoverIP = hoverIPInput.value;
+
+            // Сохранение в localStorage
+            localStorage.setItem('vrIP', settings.vrIP);
+            localStorage.setItem('hoverIP', settings.hoverIP);
+
+            closeSettingsModal();
+            showNotification('Настройки сохранены', 'success');
+
+            // Переподключение к устройствам
+            disconnectFromDevices();
+            connectToDevices();
+        }
+
+        // Функции для установки нулевых значений
+        function setVRZero() {
+            // Сохраняем текущие значения как смещения
+            vrZeroOffset.pitch = vrData.pitch;
+            vrZeroOffset.roll = vrData.roll;
+            vrZeroOffset.yaw = vrData.yaw;
+
+            // Отправляем команду на устройство VR для установки нуля
+            if (vrWebSocket && vrWebSocket.readyState === WebSocket.OPEN) {
+                vrWebSocket.send('SET_ZERO');
+                showNotification('Нулевое значение установлено для VR устройства', 'success');
+            } else {
+                showNotification('Нет подключения к VR устройству', 'error');
+            }
+        }
+
+        function setHoverZero() {
+            // Сохраняем текущие значения как смещения
+            hoverZeroOffset.pitch = hoverData.pitch;
+            hoverZeroOffset.roll = hoverData.roll;
+            hoverZeroOffset.yaw = hoverData.yaw;
+
+            // Отправляем команду на устройство HoverBoard для установки нуля
+            if (hoverWebSocket && hoverWebSocket.readyState === WebSocket.OPEN) {
+                hoverWebSocket.send('SET_ZERO');
+                showNotification('Нулевое значение установлено для HoverBoard', 'success');
+            } else {
+                showNotification('Нет подключения к HoverBoard', 'error');
+            }
+        }
+
+        function setGlobalZero() {
+            // Устанавливаем ноль для обоих датчиков
+            setVRZero();
+            setHoverZero();
+            showNotification('Нулевые значения установлены для обоих датчиков', 'success');
+        }
+
+        // Функции для управления джойстиком
+        function initGamepad() {
+            // Слушаем события подключения/отключения геймпада
+            window.addEventListener("gamepadconnected", function(e) {
+                gamepadConnected = true;
+                gamepadIndex = e.gamepad.index;
+                gamepadStatusElement.textContent = `Джойстик: Подключен (${e.gamepad.id})`;
+                gamepadStatusElement.className = 'gamepad-status gamepad-connected';
+                gamepadInfoElement.textContent = 'Используйте стики и кнопки для управления';
+                showNotification('Джойстик подключен', 'success');
+                console.log("Gamepad connected:", e.gamepad);
+            });
+
+            window.addEventListener("gamepaddisconnected", function(e) {
+                gamepadConnected = false;
+                gamepadIndex = null;
+                gamepadStatusElement.textContent = 'Джойстик: Не подключен';
+                gamepadStatusElement.className = 'gamepad-status gamepad-disconnected';
+                gamepadInfoElement.textContent = 'Подключите джойстик и нажмите любую кнопку для активации';
+                showNotification('Джойстик отключен', 'error');
+                console.log("Gamepad disconnected:", e.gamepad);
+            });
+
+            // Запускаем опрос геймпада
+            pollGamepads();
+        }
+
+        function updateGamepadSpeed() {
+            gamepadSpeed = gamepadSpeedSlider.value;
+            gamepadSpeedValueElement.textContent = gamepadSpeed;
+        }
+
+        function map(x, in_min, in_max, out_min, out_max) {
+            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        }
+
+        const pollGamepads = () => {
+            const gamepads = navigator.getGamepads();
+
+            for (const gamepad of gamepads) {
+                if (!gamepad) continue;
+
+                // Инициализация предыдущих состояний для этого геймпада
+                if (!previousButtonStates[gamepad.index]) {
+                    previousButtonStates[gamepad.index] = [];
+                }
+                if (!previousAxesStates[gamepad.index]) {
+                    previousAxesStates[gamepad.index] = [];
+                }
+
+                // Проверка кнопок
+                gamepad.buttons.forEach((button, index) => {
+                    const currentValue = button.value;
+                    const previousValue = previousButtonStates[gamepad.index][index];
+
+                    if (previousValue !== currentValue) {
+                        // Обработка нажатия кнопок
+                        if (currentValue === 1) {
+                            switch (index) {
+                                case 0: // Кнопка A
+                                    sendHoverCommand('MOVE_FORWARD');
+                                    break;
+                                case 1: // Кнопка B
+                                    sendHoverCommand('MOVE_BACKWARD');
+                                    break;
+                                case 2: // Кнопка X
+                                    sendHoverCommand('MOVE_LEFT');
+                                    break;
+                                case 3: // Кнопка Y
+                                    sendHoverCommand('MOVE_RIGHT');
+                                    break;
+                                case 4: // LB
+                                    // Уменьшение скорости
+                                    if (gamepadSpeed > 10) {
+                                        gamepadSpeed -= 10;
+                                        gamepadSpeedSlider.value = gamepadSpeed;
+                                        gamepadSpeedValueElement.textContent = gamepadSpeed;
+                                    }
+                                    break;
+                                case 5: // RB
+                                    // Увеличение скорости
+                                    if (gamepadSpeed < 100) {
+                                        gamepadSpeed += 10;
+                                        gamepadSpeedSlider.value = gamepadSpeed;
+                                        gamepadSpeedValueElement.textContent = gamepadSpeed;
+                                    }
+                                    break;
+                                case 6: // LT
+                                    sendHoverCommand('STOP');
+                                    break;
+                                case 7: // RT
+                                    // Сброс скорости к среднему значению
+                                    gamepadSpeed = 50;
+                                    gamepadSpeedSlider.value = gamepadSpeed;
+                                    gamepadSpeedValueElement.textContent = gamepadSpeed;
+                                    break;
+                                case 8: // Back/Select
+                                    setGlobalZero();
+                                    break;
+                                case 9: // Start
+                                    toggleYawSync();
+                                    break;
+                            }
+                        } else {
+                            // Кнопка отпущена - остановка движения
+                            if (index === 0 || index === 1 || index === 2 || index === 3) {
+                                sendHoverCommand('STOP');
+                            }
+                        }
+                        console.log(`Gamepad ${gamepad.index}, Button ${index}: value = ${currentValue}`);
+                    }
+                    previousButtonStates[gamepad.index][index] = currentValue;
+                });
+
+                // Проверка осей (стиков)
+                gamepad.axes.forEach((axis, index) => {
+                    const currentValue = axis;
+                    const previousValue = previousAxesStates[gamepad.index][index];
+
+                    // Округляем до 2 знаков, чтобы избежать шума
+                    const roundedCurrent = Math.round(currentValue * 100) / 100;
+                    const roundedPrevious = Math.round(previousValue * 100) / 100;
+
+                    if (roundedPrevious !== roundedCurrent) {
+                        // Левый стик (оси 0 и 1) - управление движением
+                        if (index === 0 || index === 1) {
+                            handleGamepadAxis(index, roundedCurrent);
+                        }
+
+                        console.log(`Gamepad ${gamepad.index}, Axis ${index}: value = ${roundedCurrent}`);
+                        previousAxesStates[gamepad.index][index] = currentValue;
+                    }
+                });
+            }
+
+            window.requestAnimationFrame(pollGamepads);
+        };
+
+        function handleGamepadAxis(axisIndex, value) {
+            const deadZone = 0.2;
+            const absValue = Math.abs(value);
+
+            if (absValue < deadZone) {
+                // В пределах мертвой зоны - остановка
+                sendHoverCommand('STOP');
+                return;
+            }
+            
+            // Масштабируем значение с учетом скорости джойстика
+            const scaledValue = map(absValue, deadZone, 1, 0, gamepadSpeed);
+            
+            if (axisIndex === 1) { // Левый стик - вертикальная ось (вперед/назад)
+                if (value < 0) {
+                    // Вперед
+                    sendHoverCommand('MOVE_FORWARD');
+                } else {
+                    // Назад
+                    sendHoverCommand('MOVE_BACKWARD');
+                }
+            } else if (axisIndex === 0) { // Левый стик - горизонтальная ось (влево/вправо)
+                if (value < 0) {
+                    // Влево
+                    sendHoverCommand('MOVE_LEFT');
+                } else {
+                    // Вправо
+                    sendHoverCommand('MOVE_RIGHT');
+                }
+            }
+        }
+        
+        // Функции для WebSocket соединений
+        function connectToDevices() {
+            if (settings.vrIP) {
+                connectToVRDevice();
+            }
+            
+            if (settings.hoverIP) {
+                connectToHoverDevice();
+            }
+        }
+        
+        function connectToVRDevice() {
+            if (vrWebSocket && vrWebSocket.readyState === WebSocket.OPEN) {
+                return;
+            }
+            
+            const wsUrl = `ws://${settings.vrIP}:81`;
+            vrWebSocket = new WebSocket(wsUrl);
+            
+            vrWebSocket.onopen = function() {
+                console.log('Connected to VR device');
+                vrStatusElement.textContent = 'VR Device: Connected';
+                vrStatusElement.className = 'status-item connected';
+                showNotification('Подключено к VR устройству', 'success');
+            };
+            
+            vrWebSocket.onmessage = function(event) {
+                processVRData(event.data);
+            };
+            
+            vrWebSocket.onclose = function() {
+                console.log('Disconnected from VR device');
+                vrStatusElement.textContent = 'VR Device: Disconnected';
+                vrStatusElement.className = 'status-item disconnected';
+                
+                // Попытка переподключения через 5 секунд
+                setTimeout(connectToVRDevice, 5000);
+            };
+            
+            vrWebSocket.onerror = function(error) {
+                console.error('VR WebSocket error:', error);
+                vrStatusElement.textContent = 'VR Device: Error';
+                vrStatusElement.className = 'status-item disconnected';
+            };
+        }
+        
+        function connectToHoverDevice() {
+            if (hoverWebSocket && hoverWebSocket.readyState === WebSocket.OPEN) {
+                return;
+            }
+            
+            const wsUrl = `ws://${settings.hoverIP}:81`;
+            hoverWebSocket = new WebSocket(wsUrl);
+            
+            hoverWebSocket.onopen = function() {
+                console.log('Connected to HoverBoard device');
+                hoverStatusElement.textContent = 'HoverBoard: Connected';
+                hoverStatusElement.className = 'status-item connected';
+                showNotification('Подключено к HoverBoard', 'success');
+                
+                // Установка начальной скорости
+                sendHoverCommand('SPEED:' + settings.currentSpeed);
+            };
+            
+            hoverWebSocket.onmessage = function(event) {
+                processHoverData(event.data);
+            };
+            
+            hoverWebSocket.onclose = function() {
+                console.log('Disconnected from HoverBoard device');
+                hoverStatusElement.textContent = 'HoverBoard: Disconnected';
+                hoverStatusElement.className = 'status-item disconnected';
+                
+                // Попытка переподключения через 5 секунд
+                setTimeout(connectToHoverDevice, 5000);
+            };
+            
+            hoverWebSocket.onerror = function(error) {
+                console.error('HoverBoard WebSocket error:', error);
+                hoverStatusElement.textContent = 'HoverBoard: Error';
+                hoverStatusElement.className = 'status-item disconnected';
+            };
+        }
+        
+        function disconnectFromDevices() {
+            if (vrWebSocket) {
+                vrWebSocket.close();
+                vrWebSocket = null;
+            }
+            
+            if (hoverWebSocket) {
+                hoverWebSocket.close();
+                hoverWebSocket = null;
+            }
+        }
+        
+        // Обработка данных с устройств
+        function processVRData(data) {
+            // Пример данных: "PITCH:12.5,ROLL:-3.2,YAW:45.1,REL_PITCH:0.0,REL_ROLL:0.0,REL_YAW:0.0"
+            if (data.includes('PITCH:') && data.includes('ROLL:') && data.includes('YAW:')) {
+                const pitchMatch = data.match(/PITCH:([-\d.]+)/);
+                const rollMatch = data.match(/ROLL:([-\d.]+)/);
+                const yawMatch = data.match(/YAW:([-\d.]+)/);
+                
+                if (pitchMatch) vrData.pitch = parseFloat(pitchMatch[1]) - vrZeroOffset.pitch;
+                if (rollMatch) vrData.roll = parseFloat(rollMatch[1]) - vrZeroOffset.roll;
+                if (yawMatch) vrData.yaw = parseFloat(yawMatch[1]) - vrZeroOffset.yaw;
+                
+                // Обновление UI
+                vrPitchElement.textContent = vrData.pitch.toFixed(1) + '°';
+                vrRollElement.textContent = vrData.roll.toFixed(1) + '°';
+                vrYawElement.textContent = vrData.yaw.toFixed(1) + '°';
+                
+                // Обновление 3D визуализации
+                updateVRVisualization();
+                
+                // Обновление разницы по Yaw
+                updateYawDifference();
+            }
+        }
+        
+        function processHoverData(data) {
+            // Пример данных: "PITCH:12.5,ROLL:-3.2,YAW:45.1,REL_PITCH:0.0,REL_ROLL:0.0,REL_YAW:0.0"
+            if (data.includes('PITCH:') && data.includes('ROLL:') && data.includes('YAW:')) {
+                const pitchMatch = data.match(/PITCH:([-\d.]+)/);
+                const rollMatch = data.match(/ROLL:([-\d.]+)/);
+                const yawMatch = data.match(/YAW:([-\d.]+)/);
+                
+                if (pitchMatch) hoverData.pitch = parseFloat(pitchMatch[1]) - hoverZeroOffset.pitch;
+                if (rollMatch) hoverData.roll = parseFloat(rollMatch[1]) - hoverZeroOffset.roll;
+                if (yawMatch) hoverData.yaw = parseFloat(yawMatch[1]) - hoverZeroOffset.yaw;
+                
+                // Обновление UI
+                hoverPitchElement.textContent = hoverData.pitch.toFixed(1) + '°';
+                hoverRollElement.textContent = hoverData.roll.toFixed(1) + '°';
+                hoverYawElement.textContent = hoverData.yaw.toFixed(1) + '°';
+                
+                // Обновление 3D визуализации HoverBoard
+                updateHoverVisualization();
+                
+                // Обновление разницы по Yaw
+                updateYawDifference();
+            }
+        }
+        
+        function updateYawDifference() {
+           const yawDiff = vrData.yaw - hoverData.yaw;
+           const absYawDiff = Math.abs(yawDiff);
+           yawDiffElement.textContent = absYawDiff.toFixed(1) + '°';
+
+           // Обновление направления разницы
+           updateYawDirection(yawDiff);
+
+           // Обновление направления коррекции
+           updateCorrectionDirection(yawDiff);
+           
+           // Подсветка если превышен порог
+           if (absYawDiff > settings.yawThreshold) {
+               yawDiffElement.style.color = 'var(--danger-color)';
+           } else {
+               yawDiffElement.style.color = 'var(--secondary-color)';
+           }
+        }
+        
+        function updateYawDirection(yawDiff) {
+            let maxThreshold = parseFloat(thresholdSlider.value) || 0.1;
+            if (yawSyncCheckbox.checked) {
+                if (Math.abs(yawDiff) < maxThreshold) {
+                    // стоп движение
+                    sendHoverCommand('STOP')
+                    yawDirectionElement.textContent = '';
+                    yawDirectionElement.className = 'direction-indicator';
+                } else if (yawDiff > 0) {
+                    // движение вправо
+                    sendHoverCommand('MOVE_LEFT')
+                    yawDirectionElement.textContent = 'VR → Hover';
+                    yawDirectionElement.className = 'direction-indicator direction-right';
+                } else {
+                    // движение влево
+                    sendHoverCommand('MOVE_RIGHT')
+                    yawDirectionElement.textContent = 'VR ← Hover';
+                    yawDirectionElement.className = 'direction-indicator direction-left';
+                }
+            }
+        }
+        
+        function updateCorrectionDirection(yawDiff) {
+            const absYawDiff = Math.abs(yawDiff);
+            
+            if (absYawDiff < settings.yawThreshold || !settings.yawSyncEnabled) {
+                correctionDirectionElement.textContent = '-';
+                correctionArrowElement.textContent = '';
+                correctionArrowElement.className = 'direction-indicator';
+                return;
+            }
+            
+            if (yawDiff > 0) {
+                // VR Yaw > Hover Yaw - нужно поворачивать вправо (инвертировано при синхронизации)
+                if (settings.yawSyncEnabled) {
+                    correctionDirectionElement.textContent = '← Влево';
+                    correctionArrowElement.textContent = '←';
+                    correctionArrowElement.className = 'direction-indicator direction-left';
+                } else {
+                    correctionDirectionElement.textContent = '→ Вправо';
+                    correctionArrowElement.textContent = '→';
+                    correctionArrowElement.className = 'direction-indicator direction-right';
+                }
+            } else {
+                // VR Yaw < Hover Yaw - нужно поворачивать влево (инвертировано при синхронизации)
+                if (settings.yawSyncEnabled) {
+                    correctionDirectionElement.textContent = '→ Вправо';
+                    correctionArrowElement.textContent = '→';
+                    correctionArrowElement.className = 'direction-indicator direction-right';
+                } else {
+                    correctionDirectionElement.textContent = '← Влево';
+                    correctionArrowElement.textContent = '←';
+                    correctionArrowElement.className = 'direction-indicator direction-left';
+                }
+            }
+        }
+        
+        function updateVRVisualization() {
+            // Применяем вращение к 3D кубу VR устройства
+            vrCube.style.transform = `rotateX(${vrData.roll}deg) rotateY(${vrData.yaw}deg) rotateZ(${vrData.pitch}deg)`;
+        }
+        
+        function updateHoverVisualization() {
+            // Применяем вращение к 3D кубу HoverBoard
+            hoverCube.style.transform = `rotateX(${hoverData.roll}deg) rotateY(${hoverData.yaw}deg) rotateZ(${hoverData.pitch}deg)`;
+        }
+        
+        // Функции управления
+        function sendHoverCommand(command) {
+            // Инвертируем команды Влево/Вправо при включенной синхронизации поворота
+            if (settings.yawSyncEnabled) {
+                if (command === 'MOVE_LEFT') {
+                    command = 'MOVE_RIGHT';
+                } else if (command === 'MOVE_RIGHT') {
+                    command = 'MOVE_LEFT';
+                }
+            }
+            
+            if (hoverWebSocket && hoverWebSocket.readyState === WebSocket.OPEN) {
+                hoverWebSocket.send(command);
+                console.log('Sent to HoverBoard:', command);
+            } else {
+                showNotification('Нет подключения к HoverBoard', 'error');
+            }
+        }
+        
+        function updateSpeed() {
+            settings.currentSpeed = speedSlider.value;
+            speedValueElement.textContent = settings.currentSpeed;
+            sendHoverCommand('SPEED:' + settings.currentSpeed);
+        }
+        
+        function toggleYawSync() {
+            /// todo: Удалить этот блок, он переписывается руками в  updateYawDirection
+            //settings.yawSyncEnabled = yawSyncCheckbox.checked;
+            settings.yawSyncEnabled = false;
+            syncStatusElement.textContent = settings.yawSyncEnabled ? 'Активна' : 'Отключена';
+            
+            if (settings.yawSyncEnabled) {
+                syncStatusElement.style.color = 'var(--success-color)';
+                showNotification('Синхронизация поворота включена', 'success');
+            } else {
+                syncStatusElement.style.color = 'var(--secondary-color)';
+                showNotification('Синхронизация поворота отключена', 'info');
+            }
+            
+            // Обновляем отображение направления коррекции
+            updateYawDifference();
+        }
+        
+        function updateThreshold() {
+            settings.yawThreshold = parseInt(thresholdSlider.value);
+            thresholdDisplay.textContent = settings.yawThreshold;
+            thresholdValueElement.textContent = settings.yawThreshold + '°';
+            
+            // Обновляем отображение направления коррекции
+            updateYawDifference();
+        }
+
+        // Джойстик - ИСПРАВЛЕННАЯ ЛОГИКА
+        function initJoystick() {
+            let startX, startY;
+            let handleX = 70, handleY = 70; // Начальная позиция ручки
+            
+            joystickHandle.addEventListener('mousedown', startDrag);
+            joystickHandle.addEventListener('touchstart', startDrag);
+            
+            function startDrag(e) {
+                e.preventDefault();
+                isJoystickActive = true;
+                lastJoystickCommand = null;
+                
+                if (e.type === 'mousedown') {
+                    document.addEventListener('mousemove', drag);
+                    document.addEventListener('mouseup', stopDrag);
+                } else {
+                    document.addEventListener('touchmove', drag);
+                    document.addEventListener('touchend', stopDrag);
+                }
+                
+                startX = e.clientX || e.touches[0].clientX;
+                startY = e.clientY || e.touches[0].clientY;
+            }
+            
+            function drag(e) {
+                if (!isJoystickActive) return;
+                
+                e.preventDefault();
+                const currentX = e.clientX || e.touches[0].clientX;
+                const currentY = e.clientY || e.touches[0].clientY;
+                
+                const deltaX = currentX - startX;
+                const deltaY = currentY - startY;
+                
+                // Ограничиваем движение ручки в пределах джойстика
+                const radius = 70; // Радиус джойстика
+                const distance = Math.min(Math.sqrt(deltaX * deltaX + deltaY * deltaY), radius);
+                
+                const angle = Math.atan2(deltaY, deltaX);
+                handleX = 70 + Math.cos(angle) * distance;
+                handleY = 70 + Math.sin(angle) * distance;
+                
+                joystickHandle.style.left = handleX + 'px';
+                joystickHandle.style.top = handleY + 'px';
+                
+                // Определяем направление движения
+                const deadZone = 20; // Мертвая зона
+                let currentCommand = null;
+                
+                if (distance > deadZone) {
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                        // Горизонтальное движение (инвертируем при включенной синхронизации)
+                        if (deltaX > 0) {
+                            currentCommand = settings.yawSyncEnabled ? 'MOVE_LEFT' : 'MOVE_RIGHT';
+                        } else {
+                            currentCommand = settings.yawSyncEnabled ? 'MOVE_RIGHT' : 'MOVE_LEFT';
+                        }
+
+                    } else {
+                        // Вертикальное движение
+                        if (deltaY > 0) {
+                            currentCommand = 'MOVE_BACKWARD';
+                        } else {
+                            currentCommand = 'MOVE_FORWARD';
+                        }
+                    }
+                    
+                    // Отправляем команду только если она изменилась
+                    if (currentCommand !== lastJoystickCommand) {
+                        sendHoverCommand(currentCommand);
+                        lastJoystickCommand = currentCommand;
+                    }
+                } else {
+                    // В пределах мертвой зоны - остановка
+                    if (lastJoystickCommand !== 'STOP') {
+                        sendHoverCommand('STOP');
+                        lastJoystickCommand = 'STOP';
+                    }
+                }
+            }
+            
+            function stopDrag() {
+                isJoystickActive = false;
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchmove', drag);
+                document.removeEventListener('touchend', stopDrag);
+                
+                // Возвращаем ручку в центр
+                joystickHandle.style.left = '70px';
+                joystickHandle.style.top = '70px';
+                
+                // Останавливаем движение при отпускании
+                if (lastJoystickCommand !== 'STOP') {
+                    sendHoverCommand('STOP');
+                    lastJoystickCommand = 'STOP';
+                }
+            }
+        }
+        
+        // Вспомогательные функции
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // Запуск приложения
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

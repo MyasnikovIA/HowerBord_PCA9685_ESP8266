@@ -380,6 +380,28 @@
             font-weight: bold;
             margin-left: 10px;
         }
+
+        .gamepad-status {
+            background-color: var(--light-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .gamepad-connected {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .gamepad-disconnected {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .gamepad-info {
+            font-size: 14px;
+            margin-top: 10px;
+        }
         
         @media (max-width: 768px) {
             .control-panel {
@@ -535,6 +557,28 @@
                 </div>
             </div>
         </div>
+
+        <!-- Новый блок для управления джойстиком -->
+        <div class="card">
+            <h2>Управление джойстиком</h2>
+            <div class="gamepad-status" id="gamepad-status">
+                Джойстик: Не подключен
+            </div>
+            <div class="gamepad-info" id="gamepad-info">
+                Подключите джойстик и нажмите любую кнопку для активации
+            </div>
+            <div class="controls">
+                <button class="btn-success" id="gamepad-forward-btn">↑ Вперед</button>
+                <button class="btn-success" id="gamepad-backward-btn">↓ Назад</button>
+                <button class="btn-primary" id="gamepad-left-btn">← Влево</button>
+                <button class="btn-primary" id="gamepad-right-btn">Вправо →</button>
+                <button class="btn-danger" id="gamepad-stop-btn">Стоп</button>
+            </div>
+            <div class="slider-container">
+                <label for="gamepad-speed-slider">Скорость джойстика: <span id="gamepad-speed-value">50</span>%</label>
+                <input type="range" id="gamepad-speed-slider" min="0" max="100" value="50">
+            </div>
+        </div>
     </div>
     
     <!-- Модальное окно для настройки подключения -->
@@ -589,6 +633,13 @@
             roll: 0,
             yaw: 0
         };
+
+        // Переменные для управления джойстиком
+        let gamepadConnected = false;
+        let gamepadIndex = null;
+        let gamepadSpeed = 50;
+        const previousButtonStates = {};
+        const previousAxesStates = {};
         
         // Настройки по умолчанию
         const defaultSettings = {
@@ -636,6 +687,17 @@
         const globalZeroBtn = document.getElementById('global-zero-btn');
         const correctionDirectionElement = document.getElementById('correction-direction');
         const correctionArrowElement = document.getElementById('correction-arrow');
+
+        // Элементы для управления джойстиком
+        const gamepadStatusElement = document.getElementById('gamepad-status');
+        const gamepadInfoElement = document.getElementById('gamepad-info');
+        const gamepadForwardBtn = document.getElementById('gamepad-forward-btn');
+        const gamepadBackwardBtn = document.getElementById('gamepad-backward-btn');
+        const gamepadLeftBtn = document.getElementById('gamepad-left-btn');
+        const gamepadRightBtn = document.getElementById('gamepad-right-btn');
+        const gamepadStopBtn = document.getElementById('gamepad-stop-btn');
+        const gamepadSpeedSlider = document.getElementById('gamepad-speed-slider');
+        const gamepadSpeedValueElement = document.getElementById('gamepad-speed-value');
         
         // Кнопки управления
         const forwardBtn = document.getElementById('forward-btn');
@@ -648,6 +710,7 @@
         const joystick = document.getElementById('joystick');
         const joystickHandle = document.getElementById('joystick-handle');
         let isJoystickActive = false;
+        let lastJoystickCommand = null;
         
         // Инициализация
         function init() {
@@ -670,58 +733,95 @@
             speedSlider.addEventListener('input', updateSpeed);
             yawSyncCheckbox.addEventListener('change', toggleYawSync);
             thresholdSlider.addEventListener('input', updateThreshold);
-            
+
+            // Обработчики для управления джойстиком
+            gamepadSpeedSlider.addEventListener('input', updateGamepadSpeed);
+
+            // ИСПРАВЛЕННЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК ДЖОЙСТИКА
+            gamepadForwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_FORWARD'));
+            gamepadForwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadForwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadBackwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_BACKWARD'));
+            gamepadBackwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadBackwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadLeftBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_LEFT'));
+            gamepadLeftBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadLeftBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadRightBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_RIGHT'));
+            gamepadRightBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            gamepadRightBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            gamepadStopBtn.addEventListener('click', () => sendHoverCommand('STOP'));
+
             // Обработчики для кнопок управления
-            forwardBtn.addEventListener('click', () => sendHoverCommand('MOVE_FORWARD'));
-            backwardBtn.addEventListener('click', () => sendHoverCommand('MOVE_BACKWARD'));
-            leftBtn.addEventListener('click', () => sendHoverCommand('MOVE_RIGHT'));
-            rightBtn.addEventListener('click', () => sendHoverCommand('MOVE_LEFT'));
+            forwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_FORWARD'));
+            forwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            forwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            backwardBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_BACKWARD'));
+            backwardBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            backwardBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            leftBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_RIGHT'));
+            leftBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            leftBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
+            rightBtn.addEventListener('mousedown', () => sendHoverCommand('MOVE_LEFT'));
+            rightBtn.addEventListener('mouseup', () => sendHoverCommand('STOP'));
+            rightBtn.addEventListener('mouseleave', () => sendHoverCommand('STOP'));
+
             stopBtn.addEventListener('click', () => sendHoverCommand('STOP'));
-            
+
             // Обработчики для кнопок установки нуля
             vrZeroBtn.addEventListener('click', setVRZero);
             hoverZeroBtn.addEventListener('click', setHoverZero);
             globalZeroBtn.addEventListener('click', setGlobalZero);
-            
+
             // Инициализация джойстика
             initJoystick();
-            
+
+            // Инициализация управления джойстиком
+            initGamepad();
+
             // Попытка подключения к устройствам
             connectToDevices();
         }
-        
+
         // Функции для работы с модальным окном
         function openSettingsModal() {
             connectionModal.style.display = 'flex';
         }
-        
+
         function closeSettingsModal() {
             connectionModal.style.display = 'none';
         }
-        
+
         function saveSettings() {
             settings.vrIP = vrIPInput.value;
             settings.hoverIP = hoverIPInput.value;
-            
+
             // Сохранение в localStorage
             localStorage.setItem('vrIP', settings.vrIP);
             localStorage.setItem('hoverIP', settings.hoverIP);
-            
+
             closeSettingsModal();
             showNotification('Настройки сохранены', 'success');
-            
+
             // Переподключение к устройствам
             disconnectFromDevices();
             connectToDevices();
         }
-        
+
         // Функции для установки нулевых значений
         function setVRZero() {
             // Сохраняем текущие значения как смещения
             vrZeroOffset.pitch = vrData.pitch;
             vrZeroOffset.roll = vrData.roll;
             vrZeroOffset.yaw = vrData.yaw;
-            
+
             // Отправляем команду на устройство VR для установки нуля
             if (vrWebSocket && vrWebSocket.readyState === WebSocket.OPEN) {
                 vrWebSocket.send('SET_ZERO');
@@ -730,13 +830,13 @@
                 showNotification('Нет подключения к VR устройству', 'error');
             }
         }
-        
+
         function setHoverZero() {
             // Сохраняем текущие значения как смещения
             hoverZeroOffset.pitch = hoverData.pitch;
             hoverZeroOffset.roll = hoverData.roll;
             hoverZeroOffset.yaw = hoverData.yaw;
-            
+
             // Отправляем команду на устройство HoverBoard для установки нуля
             if (hoverWebSocket && hoverWebSocket.readyState === WebSocket.OPEN) {
                 hoverWebSocket.send('SET_ZERO');
@@ -745,12 +845,182 @@
                 showNotification('Нет подключения к HoverBoard', 'error');
             }
         }
-        
+
         function setGlobalZero() {
             // Устанавливаем ноль для обоих датчиков
             setVRZero();
             setHoverZero();
             showNotification('Нулевые значения установлены для обоих датчиков', 'success');
+        }
+
+        // Функции для управления джойстиком
+        function initGamepad() {
+            // Слушаем события подключения/отключения геймпада
+            window.addEventListener("gamepadconnected", function(e) {
+                gamepadConnected = true;
+                gamepadIndex = e.gamepad.index;
+                gamepadStatusElement.textContent = `Джойстик: Подключен (${e.gamepad.id})`;
+                gamepadStatusElement.className = 'gamepad-status gamepad-connected';
+                gamepadInfoElement.textContent = 'Используйте стики и кнопки для управления';
+                showNotification('Джойстик подключен', 'success');
+                console.log("Gamepad connected:", e.gamepad);
+            });
+
+            window.addEventListener("gamepaddisconnected", function(e) {
+                gamepadConnected = false;
+                gamepadIndex = null;
+                gamepadStatusElement.textContent = 'Джойстик: Не подключен';
+                gamepadStatusElement.className = 'gamepad-status gamepad-disconnected';
+                gamepadInfoElement.textContent = 'Подключите джойстик и нажмите любую кнопку для активации';
+                showNotification('Джойстик отключен', 'error');
+                console.log("Gamepad disconnected:", e.gamepad);
+            });
+
+            // Запускаем опрос геймпада
+            pollGamepads();
+        }
+
+        function updateGamepadSpeed() {
+            gamepadSpeed = gamepadSpeedSlider.value;
+            gamepadSpeedValueElement.textContent = gamepadSpeed;
+        }
+
+        function map(x, in_min, in_max, out_min, out_max) {
+            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        }
+
+        const pollGamepads = () => {
+            const gamepads = navigator.getGamepads();
+
+            for (const gamepad of gamepads) {
+                if (!gamepad) continue;
+
+                // Инициализация предыдущих состояний для этого геймпада
+                if (!previousButtonStates[gamepad.index]) {
+                    previousButtonStates[gamepad.index] = [];
+                }
+                if (!previousAxesStates[gamepad.index]) {
+                    previousAxesStates[gamepad.index] = [];
+                }
+
+                // Проверка кнопок
+                gamepad.buttons.forEach((button, index) => {
+                    const currentValue = button.value;
+                    const previousValue = previousButtonStates[gamepad.index][index];
+
+                    if (previousValue !== currentValue) {
+                        // Обработка нажатия кнопок
+                        if (currentValue === 1) {
+                            switch (index) {
+                                case 0: // Кнопка A
+                                    sendHoverCommand('MOVE_FORWARD');
+                                    break;
+                                case 1: // Кнопка B
+                                    sendHoverCommand('MOVE_BACKWARD');
+                                    break;
+                                case 2: // Кнопка X
+                                    sendHoverCommand('MOVE_LEFT');
+                                    break;
+                                case 3: // Кнопка Y
+                                    sendHoverCommand('MOVE_RIGHT');
+                                    break;
+                                case 4: // LB
+                                    // Уменьшение скорости
+                                    if (gamepadSpeed > 10) {
+                                        gamepadSpeed -= 10;
+                                        gamepadSpeedSlider.value = gamepadSpeed;
+                                        gamepadSpeedValueElement.textContent = gamepadSpeed;
+                                    }
+                                    break;
+                                case 5: // RB
+                                    // Увеличение скорости
+                                    if (gamepadSpeed < 100) {
+                                        gamepadSpeed += 10;
+                                        gamepadSpeedSlider.value = gamepadSpeed;
+                                        gamepadSpeedValueElement.textContent = gamepadSpeed;
+                                    }
+                                    break;
+                                case 6: // LT
+                                    sendHoverCommand('STOP');
+                                    break;
+                                case 7: // RT
+                                    // Сброс скорости к среднему значению
+                                    gamepadSpeed = 50;
+                                    gamepadSpeedSlider.value = gamepadSpeed;
+                                    gamepadSpeedValueElement.textContent = gamepadSpeed;
+                                    break;
+                                case 8: // Back/Select
+                                    setGlobalZero();
+                                    break;
+                                case 9: // Start
+                                    toggleYawSync();
+                                    break;
+                            }
+                        } else {
+                            // Кнопка отпущена - остановка движения
+                            if (index === 0 || index === 1 || index === 2 || index === 3) {
+                                sendHoverCommand('STOP');
+                            }
+                        }
+                        console.log(`Gamepad ${gamepad.index}, Button ${index}: value = ${currentValue}`);
+                    }
+                    previousButtonStates[gamepad.index][index] = currentValue;
+                });
+
+                // Проверка осей (стиков)
+                gamepad.axes.forEach((axis, index) => {
+                    const currentValue = axis;
+                    const previousValue = previousAxesStates[gamepad.index][index];
+
+                    // Округляем до 2 знаков, чтобы избежать шума
+                    const roundedCurrent = Math.round(currentValue * 100) / 100;
+                    const roundedPrevious = Math.round(previousValue * 100) / 100;
+
+                    if (roundedPrevious !== roundedCurrent) {
+                        // Левый стик (оси 0 и 1) - управление движением
+                        if (index === 0 || index === 1) {
+                            handleGamepadAxis(index, roundedCurrent);
+                        }
+
+                        console.log(`Gamepad ${gamepad.index}, Axis ${index}: value = ${roundedCurrent}`);
+                        previousAxesStates[gamepad.index][index] = currentValue;
+                    }
+                });
+            }
+
+            window.requestAnimationFrame(pollGamepads);
+        };
+
+        function handleGamepadAxis(axisIndex, value) {
+            const deadZone = 0.2;
+            const absValue = Math.abs(value);
+
+            if (absValue < deadZone) {
+                // В пределах мертвой зоны - остановка
+                sendHoverCommand('STOP');
+                return;
+            }
+            
+            // Масштабируем значение с учетом скорости джойстика
+            const scaledValue = map(absValue, deadZone, 1, 0, gamepadSpeed);
+            
+            if (axisIndex === 1) { // Левый стик - вертикальная ось (вперед/назад)
+                if (value < 0) {
+                    // Вперед
+                    sendHoverCommand('MOVE_FORWARD');
+                } else {
+                    // Назад
+                    sendHoverCommand('MOVE_BACKWARD');
+                }
+            } else if (axisIndex === 0) { // Левый стик - горизонтальная ось (влево/вправо)
+                if (value < 0) {
+                    // Влево
+                    sendHoverCommand('MOVE_LEFT');
+                } else {
+                    // Вправо
+                    sendHoverCommand('MOVE_RIGHT');
+                }
+            }
         }
         
         // Функции для WebSocket соединений
@@ -908,7 +1178,7 @@
 
            // Обновление направления коррекции
            updateCorrectionDirection(yawDiff);
-
+           
            // Подсветка если превышен порог
            if (absYawDiff > settings.yawThreshold) {
                yawDiffElement.style.color = 'var(--danger-color)';
@@ -920,9 +1190,6 @@
         function updateYawDirection(yawDiff) {
             let maxThreshold = parseFloat(thresholdSlider.value) || 0.1;
             if (yawSyncCheckbox.checked) {
-                // leftBtn.addEventListener('click', () => sendHoverCommand('MOVE_RIGHT'));
-                // rightBtn.addEventListener('click', () => sendHoverCommand('MOVE_LEFT'));
-                // stopBtn.addEventListener('click', () => sendHoverCommand('STOP'));
                 if (Math.abs(yawDiff) < maxThreshold) {
                     // стоп движение
                     sendHoverCommand('STOP')
@@ -1015,10 +1282,6 @@
         function toggleYawSync() {
             /// todo: Удалить этот блок, он переписывается руками в  updateYawDirection
             //settings.yawSyncEnabled = yawSyncCheckbox.checked;
-            if (!yawSyncCheckbox.checked) {
-                sendHoverCommand('STOP');
-            }
-
             settings.yawSyncEnabled = false;
             syncStatusElement.textContent = settings.yawSyncEnabled ? 'Активна' : 'Отключена';
             
@@ -1043,7 +1306,7 @@
             updateYawDifference();
         }
 
-        // Джойстик
+        // Джойстик - ИСПРАВЛЕННАЯ ЛОГИКА
         function initJoystick() {
             let startX, startY;
             let handleX = 70, handleY = 70; // Начальная позиция ручки
@@ -1054,6 +1317,7 @@
             function startDrag(e) {
                 e.preventDefault();
                 isJoystickActive = true;
+                lastJoystickCommand = null;
                 
                 if (e.type === 'mousedown') {
                     document.addEventListener('mousemove', drag);
@@ -1090,25 +1354,37 @@
                 
                 // Определяем направление движения
                 const deadZone = 20; // Мертвая зона
+                let currentCommand = null;
                 
                 if (distance > deadZone) {
                     if (Math.abs(deltaX) > Math.abs(deltaY)) {
                         // Горизонтальное движение (инвертируем при включенной синхронизации)
                         if (deltaX > 0) {
-                            sendHoverCommand(settings.yawSyncEnabled ? 'MOVE_LEFT' : 'MOVE_RIGHT');
+                            currentCommand = settings.yawSyncEnabled ? 'MOVE_LEFT' : 'MOVE_RIGHT';
                         } else {
-                            sendHoverCommand(settings.yawSyncEnabled ? 'MOVE_RIGHT' : 'MOVE_LEFT');
+                            currentCommand = settings.yawSyncEnabled ? 'MOVE_RIGHT' : 'MOVE_LEFT';
                         }
+
                     } else {
                         // Вертикальное движение
                         if (deltaY > 0) {
-                            sendHoverCommand('MOVE_BACKWARD');
+                            currentCommand = 'MOVE_BACKWARD';
                         } else {
-                            sendHoverCommand('MOVE_FORWARD');
+                            currentCommand = 'MOVE_FORWARD';
                         }
                     }
+                    
+                    // Отправляем команду только если она изменилась
+                    if (currentCommand !== lastJoystickCommand) {
+                        sendHoverCommand(currentCommand);
+                        lastJoystickCommand = currentCommand;
+                    }
                 } else {
-                    sendHoverCommand('STOP');
+                    // В пределах мертвой зоны - остановка
+                    if (lastJoystickCommand !== 'STOP') {
+                        sendHoverCommand('STOP');
+                        lastJoystickCommand = 'STOP';
+                    }
                 }
             }
             
@@ -1123,7 +1399,11 @@
                 joystickHandle.style.left = '70px';
                 joystickHandle.style.top = '70px';
                 
-                sendHoverCommand('STOP');
+                // Останавливаем движение при отпускании
+                if (lastJoystickCommand !== 'STOP') {
+                    sendHoverCommand('STOP');
+                    lastJoystickCommand = 'STOP';
+                }
             }
         }
         
